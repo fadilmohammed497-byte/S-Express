@@ -43,7 +43,40 @@ app.use('/api/payments', require('./routes/payments'));
 
 // Health Check
 app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'OK', message: 'S-Express API is running' });
+  res.status(200).json({ 
+    status: 'OK', 
+    message: 'S-Express API is running',
+    paymentMethod: process.env.PAYMENT_METHOD || 'mock',
+    features: {
+      mockPayments: true,
+      cashOnDelivery: true,
+      noApiKeysRequired: true
+    }
+  });
+});
+
+// Payment Info Endpoint
+app.get('/api/payment-info', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'S-Express works without API keys!',
+    paymentMethods: [
+      {
+        method: 'mock',
+        description: 'Simulates payment processing',
+        requiresApiKey: false
+      },
+      {
+        method: 'cod',
+        description: 'Cash on Delivery',
+        requiresApiKey: false
+      }
+    ],
+    configuration: {
+      PAYMENT_METHOD: process.env.PAYMENT_METHOD || 'mock',
+      noStripeKeyNeeded: true
+    }
+  });
 });
 
 // Error handling middleware
@@ -70,6 +103,12 @@ io.on('connection', (socket) => {
     socket.leave(`delivery-${orderId}`);
   });
 
+  // Payment update listener
+  socket.on('payment-update', (data) => {
+    console.log('Payment update:', data);
+    io.emit('payment-status', data);
+  });
+
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
   });
@@ -86,6 +125,8 @@ const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => {
   console.log(`🚀 S-Express server running on port ${PORT}`);
   console.log(`📝 Environment: ${process.env.NODE_ENV}`);
+  console.log(`💳 Payment Method: ${process.env.PAYMENT_METHOD || 'mock'}`);
+  console.log(`✅ No API keys required!`);
 });
 
 module.exports = { app, io };
